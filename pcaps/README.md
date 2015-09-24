@@ -57,7 +57,7 @@ You are given two sets of packet captures from two different networks in PCAP fo
     - HTTP | 54.191.109.23 | ec2-54-191-109-23.us-west-2.compute.amazonaws.com |
       Port 80
 17.
-    - 1 legitimate, 1 illegitimate
+    - both illegitimate
 18. Methodology: tshark -r <input.pcap> -T fields -e ip.dst ip.src | sort | uniq
     Source: https://ask.wireshark.org/questions/4827/determining-unique-mac-and-ip-addresses-in-a-pcap
     - 10.0.8.253
@@ -121,6 +121,6 @@ You are given two sets of packet captures from two different networks in PCAP fo
 19. Followed TCP Stream from login in Wireshark.
     - For set2.pcap, reconstructed emails that seemed legitimate).
       (e.g. one from Sunglasses Store, service@greatestsunglassel.us).
-    - For set3.pcap, 1 illegitimate (403 Forbidden error in response) and
-      1 legitimate (lots of 200 OK messages in response)
+    - For set3.pcap, both illegitimate (403 Forbidden error in response and
+      401 Unauthorized error in response)
 20. Use secured and encrypted protocols! HTTPS, SSL, SFTP, etc.

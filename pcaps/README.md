@@ -1,4 +1,22 @@
-# set0.pcap #
+# Comp 116 | Tufts University #
+## Assignment 1: Packet Sleuth ##
+## Zach Kirsch ##
+
+
+### Assignment Source ###
+http://tuftsdev.github.io/DefenseOfTheDarkArts/assignments/a1.html
+
+
+### Objectives ###
+In this assignment, you will learn how to read and dissect files and sensitive information (including usernames and passwords) from sets of packets captured from a network using freely available tools.
+
+
+### Overview ###
+You are given two sets of packet captures from two different networks in PCAP format to analyze: one from a network where file transfers occurred, and the other from arguably the world's most hostile network, DEF CON in Las Vegas, NV.
+
+
+
+## set0.pcap ##
 
 1. 861
 2. FTP
@@ -17,7 +35,8 @@
    - CJoWmoOUkAAAYpx.jpg
 
 
-# set2.pcap #
+## set2.pcap ##
+
 10. 77982
 11. 1
 12. Used:
@@ -31,7 +50,7 @@
 14. It is valid.
    
  
-# set3.pcap #
+## set3.pcap ##
 15. 2
 16. 
     - HTTP | 172.222.171.208 | forum.defcon.org | Port 80

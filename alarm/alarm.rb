@@ -124,8 +124,8 @@ end
 
 # Detects nmap scan - if nmap is anywhere in the payload, then
 # it's probably an nmap scan
-def is_nmap_scan(pkt)
-	if pkt.payload.include?("nmap")
+def is_nmap_scan(payload)
+	if payload.include?("nmap")
 		return true
 	else
 		return false
@@ -147,31 +147,37 @@ end
 # detects credit card by searching for regexp's.
 # (thanks to http://regular-expressions.mobi/creditcard.html for the regex)
 def is_credit_card_leak(pkt)
-	body = {pkt.payload}
+	body = pkt.payload
 	
 	# visa
-	if (/^4[0-9]{12}(?:[0-9]{3})?$/.match(body) != 0)
+	if /^4[0-9]{12}(?:[0-9]{3})?$/.match(body) != 0
 		return true;
+	end	
 
 	# mastercard
-	if (/^5[1-5][0-9]{14}$/.match(body) != 0)
+	if /^5[1-5][0-9]{14}$/.match(body) != 0
 		return true;
+	end	
 
 	# american express
-	if (/^3[47][0-9]{13}$/.match(body) != 0)
+	if /^3[47][0-9]{13}$/.match(body) != 0
 		return true;
+	end	
 
 	# diner's club
-	if (/^3(?:0[0-5]|[68][0-9])[0-9]{11}$/.match(body) != 0)
+	if /^3(?:0[0-5]|[68][0-9])[0-9]{11}$/.match(body) != 0
 		return true;
+	end	
 
 	# discover
-	if (/^6(?:011|5[0-9]{2})[0-9]{12}$/.match(body) != 0)
+	if /^6(?:011|5[0-9]{2})[0-9]{12}$/.match(body) != 0
 		return true;
+	end	
 
 	# JCB
-	if (/^(?:2131|1800|35\d{3})\d{11}$/.match(body) != 0)
+	if /^(?:2131|1800|35\d{3})\d{11}$/.match(body) != 0
 		return true;
+	end	
 
 	return false
 end
@@ -211,6 +217,10 @@ end
 
 
 def print_incident(pkt, incident, inc_num)
+	if pkt == nil
+		return
+	end
+
 	puts "#{inc_num}. ALERT: #{incident} is detected from #{pkt.ip_saddr} (#{pkt.proto.last}) (#{pkt.payload})!\n"
 end
 
@@ -232,7 +242,7 @@ def report_live_incidents(pkt, inc_num)
 		inc_num += 1
 	end
 
-	if orig_inc_num == inc_num and is_nmap_scan(pkt)
+	if orig_inc_num == inc_num and is_nmap_scan(pkt.payload)
 		print_incident(pkt, "Other Nmap Scan", inc_num)
 		inc_num += 1
 	end
@@ -250,51 +260,76 @@ def report_live_incidents(pkt, inc_num)
 	return inc_num
 end
 
-def report_log_incidents(pkt, inc_num)
-	if is_nmap_scan(pkt)
-		print_incident(pkt, "Nmap Scan", inc_num)
+def report_log_incidents(log, inc_num)
+	if is_nmap_scan(log)
+		print_incident(log, "Nmap Scan", inc_num)
 		inc_num += 1
 	end
 
-	if is_nikto_scan(pkt)
-		print_incident(pkt, "Nikto Scan", inc_num)
+	if is_nikto_scan(log)
+		print_incident(log, "Nikto Scan", inc_num)
 		inc_num += 1
 	end
 	
-	if is_masscan(pkt)
-		print_incident(pkt, "Rob Graham's Masscan", inc_num)
+	if is_masscan(log)
+		print_incident(log, "Rob Graham's Masscan", inc_num)
 		inc_num += 1
 	end
 
-	if is_shellshock_search(pkt)
-		print_incident(pkt, "Shellshock Vulnerability Search", inc_num)
+	if is_shellshock_search(log)
+		print_incident(log, "Shellshock Vulnerability Search", inc_num)
 		inc_num += 1
 	end
 
-	if is_phpmyadmin_search(pkt)
-		print_incident(pkt, "phpMyAdmin Vulnerability Search", inc_num)
+	if is_phpmyadmin_search(log)
+		print_incident(log, "phpMyAdmin Vulnerability Search", inc_num)
 		inc_num += 1
 	end
 
-	if is_shellcode(pkt)
-		print_incident(pkt, "Shellcode", inc_num)
+	if is_shellcode(log)
+		print_incident(log, "Shellcode", inc_num)
 		inc_num += 1
 	end
 
 	return inc_num
 end
 
+                         ###########################
+			 #  Analyzation Functions  #
+			 ###########################
+
+def analyze_life_traffic()
+	stream = PacketFu::Capture.new(:start => true,   \
+				       :iface => 'eth0', \
+				       :promisc => true)
+	inc_num = 0
+	stream.stream.each do |p|
+		pkt = PacketFu::Packet.parse(p)
+		
+		if (pkt != nil)
+			inc_num = report_live_incidents(pkt, inc_num)
+		end
+	end
+end
+
+def analyze_log(log)
+	logs = File.readlines(log)
+
+	inc_num = 0
+	logs.each do |l|
+		inc_num = report_log_incidents(l, inc_num)
+	end
+end
 
                          ###########################
 			 #      Main Program       #
 			 ###########################
-puts ARGV
-stream = PacketFu::Capture.new(:start => true, :iface => 'eth0', :promisc => true)
-inc_num = 0
-stream.stream.each do |p|
-	pkt = PacketFu::Packet.parse(p)
-	
-	if (pkt != nil)
-		inc_num = report_live_incidents(pkt, inc_num)
+
+if ARGV[0] == "-r"
+	if (ARGV[1] != nil)
+		analyze_log(ARGV[1])
 	end
+else
+	analyze_live_traffic()
 end
+

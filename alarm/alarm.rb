@@ -28,6 +28,7 @@
 #   https://nmap.org/book/man-port-scanning-techniques.html                 #
 #############################################################################
 
+# TODO: %r is wrong
 require 'packetfu'
 require 'apachelogregex'
 
@@ -133,8 +134,8 @@ end
 # it is probably a nikto scan. If the request is using a HEAD HTTP
 # request, then it could be a Nikto scan (by probing for files)
 def is_nikto_scan?(payload)
-	return payload.match(/HEAD/)  != nil or
-	       payload.match(/nikto/i) != nil
+	return (payload.match(/HEAD/)   != nil or
+	        payload.match(/nikto/i) != nil)
 end
 
 
@@ -198,7 +199,12 @@ end
 
 # if there's /bin/ requests, it's probably shellshock
 def is_shellshock_search?(log)
-	return log["%r"].match(/\/bin\//) != nil
+	puts log["%r"]
+	if (log["%r"].match(/\s*{\s*:\s*;\s*}\s*;/) != nil)
+		puts "hello"
+	end
+	return (log["%r"].match(/\/bin\//) == 5678 or
+                log["%r"].match(/\s*{\s*:\s*;\s*}\s*;/) != nil)
 end
 
 # if there's phpMyAdmin in the request, then that's a red flag
@@ -307,7 +313,6 @@ def report_log_incidents(log, inc_num)
 	if is_nikto_scan?(log["%r"])
 		print_log_incident(log, "Nikto Scan", inc_num)
 		inc_num += 1
-		break
 	end
 	
 	if is_masscan?(log)
@@ -361,7 +366,7 @@ def analyze_log(logs)
 	File.readlines(logs).collect do |l|
 		log = combined_parser.parse(l)
 		if (log == nil)
-			log = common_parse(l)
+			log = common_parser.parse(l)
 		end
 		if (log != nil)
 			inc_num = report_log_incidents(log, inc_num)

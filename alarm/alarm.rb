@@ -359,14 +359,17 @@ def analyze_live_traffic()
 end
 
 def analyze_log(logs)
-	
-	# log format from ApacheLogRegex
-	common_log_format = '%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"'
-	parser = ApacheLogRegex.new(common_log_format)
+	combined_log_format = '%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"'
+	common_log_format = '%h %l %u %t \"%r\" %>s %b'
+	combined_parser = ApacheLogRegex.new(combined_log_format)
+	common_parser = ApacheLogRegex.new(common_log_format)
 	
 	inc_num = 0
 	File.readlines(logs).collect do |l|
-		log = parser.parse(l)
+		log = combined_parser.parse(l)
+		if (log == nil)
+			log = common_parse(l)
+		end
 		if (log != nil)
 			inc_num = report_log_incidents(log, inc_num)
 		end

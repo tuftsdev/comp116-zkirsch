@@ -29,6 +29,7 @@
 #############################################################################
 
 require 'packetfu'
+require 'apachelogregex'
 
                          ###########################
 			 # Functions for detecting #
@@ -56,7 +57,7 @@ def is_xmas_scan?(pkt)
 	return true
 end
 
-# Detects NULL scan - if all the bits are 0, it's a NULL scan
+# Detects NULL scan - if all the bits are 0 it is a NULL scan
 def is_null_scan?(pkt)
 	if ! pkt.proto.include?("TCP")
 		return false
@@ -123,9 +124,9 @@ def is_fin_scan?(pkt)
 end
 
 # Detects nmap scan - if nmap is anywhere in the payload, then
-# it's probably an nmap scan
+# it is probably an nmap scan
 def is_nmap_scan?(payload)
-	if payload.match(/nmap/i)
+	if payload.match(/nmap/) != nil
 		return true
 	else
 		return false
@@ -133,9 +134,9 @@ def is_nmap_scan?(payload)
 end
 
 # Detects nikto scan - if nikto is anywhere in the payload, then
-# it's probably an nikto scan
+# it is probably an nikto scan
 def is_nikto_scan?(payload)
-	if payload.match(/nikto/i)
+	if payload.match(/nikto/) != nil
 		return true
 	else
 		return false
@@ -149,38 +150,38 @@ end
 			 #      credit cards      #
 			 ##########################
 
-# detects credit card by searching for regexp's.
+# detects credit card by searching for regexp.
 # (thanks to http://regular-expressions.mobi/creditcard.html for the regex)
 def is_credit_card_leak?(pkt)
 	body = pkt.payload
 	
 	# visa
-	if body.match(/^4[0-9]{12}(?:[0-9]{3})?$/) != 0
+	if body.match(/^4[0-9]{12}(?:[0-9]{3})?$/) != nil
 		return true;
 	end	
 
 	# mastercard
-	if body.match(/^5[1-5][0-9]{14}$/) != 0
+	if body.match(/^5[1-5][0-9]{14}$/) != nil
 		return true;
 	end	
 
 	# american express
-	if body.match(/^3[47][0-9]{13}$/.match) != 0
+	if body.match(/^3[47][0-9]{13}$/) != nil
 		return true;
 	end	
 
 	# diner's club
-	if body.match(/^3(?:0[0-5]|[68][0-9])[0-9]{11}$/) != 0
+	if body.match(/^3(?:0[0-5]|[68][0-9])[0-9]{11}$/) != nil
 		return true;
 	end	
 
 	# discover
-	if body.match(/^6(?:011|5[0-9]{2})[0-9]{12}$/) != 0
+	if body.match(/^6(?:011|5[0-9]{2})[0-9]{12}$/) != nil
 		return true;
 	end	
 
 	# JCB
-	if body.match(/^(?:2131|1800|35\d{3})\d{11}$/) != 0
+	if body.match(/^(?:2131|1800|35\d{3})\d{11}$/) != nil
 		return true;
 	end	
 
@@ -196,23 +197,22 @@ end
 			 ##########################
 
 
-def is_masscan?(pkt)
-	return true
+def is_masscan?(log)
+	return false
 	# TODO
 end
 
-def is_shellshock_search?(pkt)
-	return true
+def is_shellshock_search?(log)
+	return false
 	# TODO
 end
 
-def is_phpmyadmin_search?(pkt)
-	return true
-	# TODO
+def is_phpmyadmin_search?(log)
+	return log["%r"].match(/phpMyAdmin/) != nil
 end
 
-def is_shellcode?(pkt)
-	return true
+def is_shellcode?(log)
+	return false
 	# TODO
 end
 
@@ -221,22 +221,47 @@ end
 			 ##########################
 
 def print_incident(inc_num, incident, ip_saddr, proto, payload)
-	if pkt == nil
-		return
-	end
-
-	puts "#{inc_num}. ALERT: #{incident} is detected from #{ip_saddr} (#{last}) (#{payload})!\n"
+	puts "#{inc_num}. ALERT: #{incident} is detected from #{ip_saddr} (#{proto}) (#{payload})!\n"
 end
 
 def print_pkt_incident(pkt, incident, inc_num)
-{
-	print_incident(inc_num, incident, pkt.ip_saddr, pkt.proto.last, pkt.payload);
-}
+	print_incident(inc_num, incident, pkt.ip_saddr, pkt.proto.last, pkt.payload)
+end
+
+# searches log request for, and returns, protocol
+def get_proto_from_log(log)
+	proto = ""
+	req = log["%r"]
+
+	if req.match(/HTTPS/) != nil
+		proto = "HTTPS"
+	elsif req.match(/HTTP/) != nil
+		proto = "HTTP"
+	elsif req.match(/UDP/) != nil
+		proto = "UDP"
+	elsif req.match(/TCP/) != nil
+		proto = "TCP"
+	elsif req.match(/SFTP/) != nil
+		proto = "SFTP"
+	elsif req.match(/FTP/) != nil
+		proto = "FTP"
+	elsif req.match(/IMAP/) != nil
+		proto = "IMAP"
+	elsif req.match(/POP/) != nil
+		proto = "POP"
+	elsif req.match(/SMTP/) != nil
+		proto = "SMTP"
+	elsif req.match(/SSH/) != nil
+		proto = "SSH"
+	end
+
+	return proto
+end
 
 def print_log_incident(log, incident, inc_num)
-{
-	#print_incident(inc_num, incident, pkt.ip_saddr, pkt.proto.last, pkt.payload);
-}
+	proto = get_proto_from_log(log)
+	print_incident(inc_num, incident, log["%h"], proto, log["%r"]);
+end
 
 def report_live_incidents(pkt, inc_num)
 	orig_inc_num = inc_num
@@ -275,14 +300,21 @@ def report_live_incidents(pkt, inc_num)
 end
 
 def report_log_incidents(log, inc_num)
-	if is_nmap_scan?(log)
-		print_log_incident(log, "Nmap Scan", inc_num)
-		inc_num += 1
+	
+	log.each do |k, v|
+		if is_nmap_scan?(v)
+			print_log_incident(log, "Nmap Scan", inc_num)
+			inc_num += 1
+			break
+		end
 	end
 
-	if is_nikto_scan?(log)
-		print_log_incident(log, "Nikto Scan", inc_num)
-		inc_num += 1
+	log.each do |k, v|
+		if is_nikto_scan?(v)
+			print_log_incident(log, "Nikto Scan", inc_num)
+			inc_num += 1
+			break
+		end
 	end
 	
 	if is_masscan?(log)
@@ -312,7 +344,7 @@ end
 			 #  Analyzation Functions  #
 			 ###########################
 
-def analyze_life_traffic()
+def analyze_live_traffic()
 	stream = PacketFu::Capture.new(:start => true,   \
 				       :iface => 'eth0', \
 				       :promisc => true)
@@ -326,12 +358,18 @@ def analyze_life_traffic()
 	end
 end
 
-def analyze_log(log)
-	logs = File.readlines(log)
-
+def analyze_log(logs)
+	
+	# log format from ApacheLogRegex
+	common_log_format = '%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"'
+	parser = ApacheLogRegex.new(common_log_format)
+	
 	inc_num = 0
-	logs.each do |l|
-		inc_num = report_log_incidents(l, inc_num)
+	File.readlines(logs).collect do |l|
+		log = parser.parse(l)
+		if (log != nil)
+			inc_num = report_log_incidents(log, inc_num)
+		end
 	end
 end
 
@@ -342,6 +380,8 @@ end
 if ARGV[0] == "-r"
 	if (ARGV[1] != nil)
 		analyze_log(ARGV[1])
+	else
+		puts "Usage: ruby alarm.rb [-r <web server log>]"
 	end
 else
 	analyze_live_traffic()

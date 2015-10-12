@@ -28,9 +28,26 @@
 #   https://nmap.org/book/man-port-scanning-techniques.html                 #
 #############################################################################
 
-# TODO: %r is wrong
+# TODO: search in binary too
+# TODO: read in pcap files
 require 'packetfu'
 require 'apachelogregex'
+
+
+                         ###########################
+			 #    Matching function    #
+			 ###########################
+
+# checks if a 'needle' is somewhere in a 'haystack', where the haystack
+# may or may not be in binary
+def matches?(haystack, needle)
+	if haystack.match(/#{needle}/) != nil
+		puts "YO"
+	end
+	return true
+end
+
+def 
 
                          ###########################
 			 # Functions for detecting #
@@ -127,7 +144,7 @@ end
 # Detects nmap scan - if nmap is anywhere in the payload, then
 # it is probably an nmap scan.
 def is_nmap_scan?(payload)
-	return  payload.match(/nmap/i) != nil
+	return matches?(payload, "nmap")
 end
 
 # Detects nikto scan - if nikto is anywhere in the payload, then
@@ -151,32 +168,22 @@ def is_credit_card_leak?(pkt)
 	body = pkt.payload
 	
 	# visa
-	if body.match(/^4[0-9]{12}(?:[0-9]{3})?$/) != nil
+	if body.match(/4\d{3}(\s|-)?\d{4}(\s|-)?\d{4}(\s|-)?\d{4}/) != nil
 		return true;
 	end	
 
 	# mastercard
-	if body.match(/^5[1-5][0-9]{14}$/) != nil
+	if body.match(/5\d{3}(\s|-)?\d{4}(\s|-)?\d{4}(\s|-)?\d{4}/) != nil
 		return true;
 	end	
 
 	# american express
-	if body.match(/^3[47][0-9]{13}$/) != nil
-		return true;
-	end	
-
-	# diner's club
-	if body.match(/^3(?:0[0-5]|[68][0-9])[0-9]{11}$/) != nil
+	if body.match(/3\d{3}(\s|-)?\d{6}(\s|-)?\d{5}/) != nil
 		return true;
 	end	
 
 	# discover
-	if body.match(/^6(?:011|5[0-9]{2})[0-9]{12}$/) != nil
-		return true;
-	end	
-
-	# JCB
-	if body.match(/^(?:2131|1800|35\d{3})\d{11}$/) != nil
+	if body.match(/6011(\s|-)?\d{4}(\s|-)?\d{4}(\s|-)?\d{4}/) != nil
 		return true;
 	end	
 
@@ -199,12 +206,8 @@ end
 
 # if there's /bin/ requests, it's probably shellshock
 def is_shellshock_search?(log)
-	puts log["%r"]
-	if (log["%r"].match(/\s*{\s*:\s*;\s*}\s*;/) != nil)
-		puts "hello"
-	end
-	return (log["%r"].match(/\/bin\//) == 5678 or
-                log["%r"].match(/\s*{\s*:\s*;\s*}\s*;/) != nil)
+	return (log.match(/\/bin\//) == 5678 or
+                log.match(/\s*{\s*:\s*;\s*}\s*;/) != nil)
 end
 
 # if there's phpMyAdmin in the request, then that's a red flag
@@ -214,8 +217,13 @@ end
 
 # if there's \x in the requests, it's probably trying to run some shellcode
 def is_shellcode?(log)
-	return log["%r"].match(/\\x/) != nil
+	return log.match(/\\x/) != nil
 end
+
+
+
+
+
 
                          ##########################
 			 #   Incident Reporting   #
@@ -320,9 +328,12 @@ def report_log_incidents(log, inc_num)
 		inc_num += 1
 	end
 
-	if is_shellshock_search?(log)
-		print_log_incident(log, "Shellshock Vulnerability Search", inc_num)
-		inc_num += 1
+	log.each do |k, v|
+		if is_shellshock_search?(v)
+			print_log_incident(log, "Shellshock Vulnerability Search", inc_num)
+			inc_num += 1
+			break
+		end
 	end
 
 	if is_phpmyadmin_search?(log)
@@ -330,9 +341,12 @@ def report_log_incidents(log, inc_num)
 		inc_num += 1
 	end
 
-	if is_shellcode?(log)
-		print_log_incident(log, "Shellcode", inc_num)
-		inc_num += 1
+	log.each do |k, v|
+		if is_shellcode?(v)
+			print_log_incident(log, "Shellcode", inc_num)
+			inc_num += 1
+			break
+		end
 	end
 
 	return inc_num
@@ -377,6 +391,8 @@ end
                          ###########################
 			 #      Main Program       #
 			 ###########################
+
+matches?("hello", "hell")
 
 if ARGV[0] == "-r"
 	if (ARGV[1] != nil)

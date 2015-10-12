@@ -1,7 +1,7 @@
 #############################################################################
-#                         Comp 116 | HW 2 | Alarm                           # 
-#                        Zach Kirsch, October 2015                          # 
-#                                                                           #      
+#                         Comp 116 | HW 2 | Alarm                           #
+#                        Zach Kirsch, October 2015                          #
+#                                                                           #
 # This is a program that acts as an alarm for nmap scans and other          #
 #   vulnerabilities.                                                        #
 #                                                                           #
@@ -124,23 +124,17 @@ def is_fin_scan?(pkt)
 end
 
 # Detects nmap scan - if nmap is anywhere in the payload, then
-# it is probably an nmap scan
+# it is probably an nmap scan.
 def is_nmap_scan?(payload)
-	if payload.match(/nmap/) != nil
-		return true
-	else
-		return false
-	end
+	return  payload.match(/nmap/i) != nil
 end
 
 # Detects nikto scan - if nikto is anywhere in the payload, then
-# it is probably an nikto scan
+# it is probably a nikto scan. If the request is using a HEAD HTTP
+# request, then it could be a Nikto scan (by probing for files)
 def is_nikto_scan?(payload)
-	if payload.match(/nikto/) != nil
-		return true
-	else
-		return false
-	end
+	return payload.match(/HEAD/)  != nil or
+	       payload.match(/nikto/i) != nil
 end
 
 
@@ -197,23 +191,24 @@ end
 			 ##########################
 
 
+# if 'masscan' is in the request, then it's probably Rob Graham's Masscan
 def is_masscan?(log)
-	return false
-	# TODO
+	return log["%r"].match(/masscan/) != nil
 end
 
+# if there's /bin/ requests, it's probably shellshock
 def is_shellshock_search?(log)
-	return false
-	# TODO
+	return log["%r"].match(/\/bin\//) != nil
 end
 
+# if there's phpMyAdmin in the request, then that's a red flag
 def is_phpmyadmin_search?(log)
 	return log["%r"].match(/phpMyAdmin/) != nil
 end
 
+# if there's \x in the requests, it's probably trying to run some shellcode
 def is_shellcode?(log)
-	return false
-	# TODO
+	return log["%r"].match(/\\x/) != nil
 end
 
                          ##########################
@@ -225,7 +220,7 @@ def print_incident(inc_num, incident, ip_saddr, proto, payload)
 end
 
 def print_pkt_incident(pkt, incident, inc_num)
-	print_incident(inc_num, incident, pkt.ip_saddr, pkt.proto.last, pkt.payload)
+	print_incident(inc_num, incident, pkt.ip_saddr, pkt.proto, pkt.payload)
 end
 
 # searches log request for, and returns, protocol
@@ -309,12 +304,10 @@ def report_log_incidents(log, inc_num)
 		end
 	end
 
-	log.each do |k, v|
-		if is_nikto_scan?(v)
-			print_log_incident(log, "Nikto Scan", inc_num)
-			inc_num += 1
-			break
-		end
+	if is_nikto_scan?(log["%r"])
+		print_log_incident(log, "Nikto Scan", inc_num)
+		inc_num += 1
+		break
 	end
 	
 	if is_masscan?(log)
@@ -389,4 +382,3 @@ if ARGV[0] == "-r"
 else
 	analyze_live_traffic()
 end
-

@@ -44,8 +44,8 @@ USAGE = "Usage: ruby alarm.rb\n"\
         "       ruby alarm.rb -r <web server log>\n"\
         "       ruby alarm.rb -p <pcap file>\n"
 
-IFACE = 'en0' # OS X => en0
-               # Kali => eth0
+IFACE = 'en0'	# OS X => en0
+		# Kali => eth0
 
                          ###########################
                          #    Matching function    #

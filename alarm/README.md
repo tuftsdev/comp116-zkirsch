@@ -6,14 +6,14 @@
 ---
 
 I believe that all aspects of the assignment, including the extra credit, have been correctly implemented:
-- Running **ruby alarm.rb** reads in packets in real time and looks for the following (possibly) malicious scans:
+- Running `ruby alarm.rb` reads in packets in real time and looks for the following (possibly) malicious scans:
   - Nikto
   - X-Mas
   - NULL
   - FIN
   - Other Nmap
-- Running **ruby alarm.rb -p &lt;pcap file&gt;** reads in a pcap file, and searches for the same malicious scans as running **ruby alarm.rb** with no command line options.
-- Running **ruby alarm.rb -r &lt;web server log&gt;** reads in a server log in Apache combined log or common log format, and looks for the following incidents:
+- Running `ruby alarm.rb -p <pcap file>` reads in a pcap file, and searches for the same malicious scans as running `ruby alarm.rb` with no command line options.
+- Running `ruby alarm.rb -r <web server log>` reads in a server log in Apache combined log or common log format, and looks for the following incidents:
   - Nmap scan (of any variety)
   - Nikto scan
   - Someone running Rob Graham's Masscan

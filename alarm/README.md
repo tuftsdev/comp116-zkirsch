@@ -28,14 +28,16 @@ I collaborated, but did not share code, with a small group of students:
 - Daniel Baigel
 
 I spent about 6 hours on this assignment.
-&nbsp;
+&nbsp;&nbsp;
 
 *Are the heuristics used in this assignment to determine incidents "even that good"?*
+
 For detecting certain scans/attacks that deal with switching TCP flags on and off, this is effective at analyzing the flags on individual packets. However, for other types of scans, searching for string and binary matches is a rudimentary effort at identifying scans. It would be more effective to analyze what the scan is actually doing, but that can be substantially more difficult.
 Additionally, searching for credit card leaks has an inordinate number of false positives. Many cookies contain long strings that match the regular expressions used to identify credit cards.
 &nbsp;
 
 *If you have spare time in the future, what would you add to the program or do differently with regards to detecting incidents?*
+
 I would attempt to
 - categorize more types of scans and attacks, rather than just output "Other Nmap scan"
 - search for passwords and/or usernames sent in plain text

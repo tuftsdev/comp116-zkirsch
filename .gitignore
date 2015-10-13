@@ -1,1 +1,4 @@
 *.pcap
+crack/
+
+.DS_Store

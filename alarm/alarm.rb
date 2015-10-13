@@ -3,7 +3,7 @@
 #                        Zach Kirsch, October 2015                          #
 #                                                                           #
 # This is a program that acts as an alarm for nmap scans and other          #
-#   vulnerabilities.                                                        #
+# vulnerabilities.                                                          #
 #                                                                           #
 #    Usage: ruby alarm.rb { [-r <web server log>], [-p <pcap file>] }       #
 #                                                                           #
@@ -37,6 +37,15 @@ require 'packetfu'
 require 'pcaprub'
 require 'apachelogregex'
 
+PCAP_OPTION   = '-p'
+WEBLOG_OPTION = '-r'
+
+USAGE = "Usage: ruby alarm.rb\n"\
+        "       ruby alarm.rb -r <web server log>\n"\
+        "       ruby alarm.rb -p <pcap file>\n"
+
+IFACE = 'en0' # OS X => en0
+               # Kali => eth0
 
                          ###########################
                          #    Matching function    #
@@ -57,7 +66,7 @@ def matches?(haystack, needle, case_sens)
 
         # maybe the haystack is binary
         binary_needle = needle.each_byte.map { |b| sprintf(" 0x%02X ",b) }.join
-        if haystack.match(binary_needle) != nil
+        if haystack.match(/#{binary_needle}/) != nil
                 return true
         end
 
@@ -114,7 +123,12 @@ end
 # Detects nmap scan - if nmap is anywhere in the payload, then
 # it is probably an nmap scan.
 def is_nmap_scan?(payload)
-        return matches?(payload, "Nmap", true)
+        # matches() checks for either string or binary match.
+        # this should be enough to check the binary, but I hardcoded
+        # a binary search here because the alarm did not detect
+        # Nmap scans during testing
+        return (matches?(payload, "Nmap", true) or
+                payload.match(/0x4E  0x6D  0x61  0x70/) != nil)
 end
 
 # Detects nikto scan - if nikto is anywhere in the payload, then
@@ -165,7 +179,7 @@ end
 
                          ##########################
                          # Function for analyzing #
-                         #        web logs        #
+                         #      server logs       #
                          ##########################
 
 
@@ -199,12 +213,14 @@ end
                          #   Incident Reporting   #
                          ##########################
 
+# prints a incident (intruder alert) in the specified format
 def print_incident(inc_num, incident, ip_saddr, proto, payload)
         to_print =  "#{inc_num}. ALERT: #{incident} is detected from"\
                     " #{ip_saddr} (#{proto}) (#{payload})!\n"
         puts to_print
 end
 
+# prints a incident (intruder alert) from a packet
 def print_pkt_incident(pkt, incident, inc_num)
         print_incident(inc_num, incident, \
                        pkt.ip_saddr, pkt.proto.last, pkt.payload)
@@ -240,11 +256,14 @@ def get_proto_from_log(log)
         return proto
 end
 
+# prints a incident (intruder alert) from a server log
 def print_log_incident(log, incident, inc_num)
         proto = get_proto_from_log(log)
         print_incident(inc_num, incident, log["%h"], proto, log["%r"]);
 end
 
+# finds and reports detected incidents while analyzing a packet
+# returns the incident number of the *next* incident
 def report_packet_incidents(pkt, inc_num)
         orig_inc_num = inc_num
 
@@ -281,6 +300,8 @@ def report_packet_incidents(pkt, inc_num)
         return inc_num
 end
 
+# finds and reports detected incidents while analyzing a server log
+# returns the incident number of the *next* incident
 def report_log_incidents(log, inc_num)
         
         log.each do |k, v|
@@ -296,7 +317,7 @@ def report_log_incidents(log, inc_num)
                 inc_num += 1
         end
        
-	# masscan shows up on User-Agent portion of log file 
+        # masscan shows up on User-Agent portion of log file 
         if log["%{User-Agent}i"] != nil and is_masscan?(log["%{User-Agent}i"])
                 print_log_incident(log, "Rob Graham's Masscan", inc_num)
                 inc_num += 1
@@ -334,25 +355,29 @@ end
                          #  Analyzation Functions  #
                          ###########################
 
+# wrapper function for analyzing a single packet
+# returns the incident number of the *next* incident
 def analyze_packet(unparsed_p, inc_num)
-	pkt = PacketFu::Packet.parse(unparsed_p)
-	new_inc_num = inc_num
-	if (pkt != nil)
-		new_inc_num = report_packet_incidents(pkt, inc_num)
-	end
-	return new_inc_num
+        pkt = PacketFu::Packet.parse(unparsed_p)
+        new_inc_num = inc_num
+        if (pkt != nil)
+                new_inc_num = report_packet_incidents(pkt, inc_num)
+        end
+        return new_inc_num
 end
 
+# captures and analyzes a live stream of packets
 def analyze_live_traffic()
         stream = PacketFu::Capture.new(:start => true,   \
-                                       :iface => 'en0', \
+                                       :iface => IFACE,  \
                                        :promisc => true)
         inc_num = 0
         stream.stream.each do |p|
-		inc_num = analyze_packet(p, inc_num)
+                inc_num = analyze_packet(p, inc_num)
         end
 end
 
+# parses and analyzes a server log in Apache combined log or common log format
 def analyze_log(logs)
         combined_log_format = '%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"'
         common_log_format = '%h %l %u %t \"%r\" %>s %b'
@@ -371,36 +396,35 @@ def analyze_log(logs)
         end
 end
 
+# analyzes a pcap file, packet by packet
 def analyze_pcap(file)
-	capture = PCAPRUB::Pcap.open_offline(file)
-	inc_num = 0
-	capture.each_packet do |p|
-		inc_num = analyze_packet(p.data, inc_num)
-	end
+        capture = PCAPRUB::Pcap.open_offline(file)
+        inc_num = 0
+        capture.each_packet do |p|
+                inc_num = analyze_packet(p.data, inc_num)
+        end
 end
 
                          ###########################
                          #      Main Program       #
                          ###########################
 
-usage = "Usage: ruby alarm.rb\n"\
-        "       ruby alarm.rb -r <web server log>\n"\
-	"       ruby alarm.rb -p <pcap file>\n"
+# see top of file for command line options
 
-if ARGV[0] == "-r"
+if ARGV[0] == WEBLOG_OPTION
         if (ARGV[1] != nil)
                 analyze_log(ARGV[1])
         else
-                abort(usage)
+                abort(USAGE)
         end
-elsif ARGV[0] == '-p'
+elsif ARGV[0] == PCAP_OPTION
         if (ARGV[1] != nil)
                 analyze_pcap(ARGV[1])
         else
-                abort(usage)
+                abort(USAGE)
         end
 elsif ARGV[0] != nil
-	abort(usage)
+        abort(USAGE)
 else
         analyze_live_traffic()
 end

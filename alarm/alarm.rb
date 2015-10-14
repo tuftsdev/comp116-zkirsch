@@ -128,15 +128,19 @@ def is_nmap_scan?(payload)
         # a binary search here because the alarm did not detect
         # Nmap scans during testing
         return (matches?(payload, "Nmap", true) or
-                payload.match(/0x4E  0x6D  0x61  0x70/) != nil)
+                payload.match(/\x4E\x6D\x61\x70/) != nil)
 end
 
 # Detects nikto scan - if nikto is anywhere in the payload, then
 # it is probably a nikto scan. If the request is using a HEAD HTTP
 # request, then it could be a Nikto scan (by probing for files)
 def is_nikto_scan?(payload)
+        # matches() checks for either string or binary match.
+        # this should be enough to check the binary, but I hardcoded
+        # a binary search here just in case
         return (matches?(payload, "HEAD", true) or
-                matches?(payload, "Nikto", false))
+                matches?(payload, "Nikto", false) or
+                payload.match(/\x4E\x69\x6B\x74\x6F/) != nil)
 end
 
 

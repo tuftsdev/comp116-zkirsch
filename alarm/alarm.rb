@@ -145,6 +145,7 @@ end
 
 
 
+
                          ##########################
                          # Function for detecting #
                          #      credit cards      #
@@ -300,7 +301,7 @@ def report_packet_incidents(pkt, inc_num)
                 print_pkt_incident(pkt, "Credit card leak", inc_num)
                 inc_num += 1
         end
-
+        
         return inc_num
 end
 
@@ -351,6 +352,7 @@ def report_log_incidents(log, inc_num)
                         break
                 end
         end
+
 
         return inc_num
 end

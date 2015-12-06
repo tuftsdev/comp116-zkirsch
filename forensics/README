@@ -1,2 +1,0 @@
-Identifed which image was unlike the rest using `diff`, a.jpg was different.
-Ran `strings a.jpg` but no human-readable strings were found.

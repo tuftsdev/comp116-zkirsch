@@ -1,0 +1,41 @@
+RSA Simulator
+Zach Kirsch
+15 December 2015
+
+To make:   make all
+
+To run:    ./rsa --generate
+           ./rsa --crack
+
+
+Included Files
+==============
+README
+Makefile
+rsa.c
+
+
+This RSA Simulator is for introducing how RSA works. There are two modes.
+ 1. Generate (with option --generate)
+    This is for generating an RSA public/private key from two seed primes
+ 2. Crack (with option --crack)
+    This is for cracking an RSA public key. For obvious reasons, this
+    is only functional for small keys
+
+The general principle behind RSA is that multipling two primes p and q together
+is easy, but factoring the product N = p * q is very difficult for large
+primes.
+
+For RSA, two primes p and q are chosen. The product N is then calculated
+trivially, then the Euler totient phi(N) is calculated. phi(N) is the count of
+numbers less than N that are relatively prime to N. A random number e is then
+generated, and a number d is found such that d * e = 1 mod phi(N).
+
+The public key is then published as N and e, and the private key is kept secret
+as d. From the public key, the only way to derive the private key is by
+factoring N (which is computationally hard for classical computers for large
+primes).
+
+This program introduces the inner workings of RSA by generating key pairs and
+by cracking RSA public keys (in slow time). Try testing it out (with small
+inputs!)
